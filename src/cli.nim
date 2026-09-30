@@ -1,6 +1,6 @@
 ## cli.nim -- command procs (cligen wiring lives in velle.nim).
 import std/[os, osproc, strutils, sequtils]
-import util, params, shard, apply, diff, remote, newshard
+import util, params, shard, validate, apply, diff, remote, newshard
 
 proc guarded(body: proc()): int =
   try:
@@ -88,6 +88,9 @@ proc doAdd(args, param: seq[string], o: Options) =
     return
   # 1. resolve shard + requires
   let shards = resolveWithRequires(shardName)
+  let validation = validateShards(shards)
+  printReport(validation)
+  if validation.errors.len > 0: fail("shard validation failed")
   for s in shards: echo "using ", s.name, "  [", s.source, "]"
   # 2. resolve params (prompt if needed)
   var needed: seq[string]
@@ -126,6 +129,17 @@ proc doAdd(args, param: seq[string], o: Options) =
 proc cmdAdd*(args: seq[string], param: seq[string] = @[], yes = false, dryRun = false,
              verbose = false, keep = false, allowRun = false): int =
   guarded: doAdd(args, param, mkOpts(yes, dryRun, verbose, keep, allowRun))
+
+proc cmdCheck*(args: seq[string]): int =
+  guarded:
+    if args.len > 1: fail("usage: velle check [path]")
+    let target = if args.len == 1: args[0] else: getCurrentDir()
+    let shards = shardsForCheck(target)
+    echo "checking ", shards.len, " shard(s) under ", target
+    let report = validateShards(shards)
+    printReport(report)
+    if report.errors.len > 0: fail("shard validation failed")
+    echo "ok"
 
 # ---- other commands ----------------------------------------------------------------
 

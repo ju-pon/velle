@@ -13,6 +13,7 @@ when isMainModule:
              "allowRun": "allow shard [[run]] commands without prompting"}],
     [cmdNew, cmdName = "new", doc = "create a local shard from files",
      help = {"user": "create in ~/.config/velle/shards instead of the project"}],
+    [cmdCheck, cmdName = "check", doc = "validate shard templates and parameters"],
     [cmdRemote, cmdName = "remote", doc = "remote add|list|remove|refresh"],
     [cmdSearch, cmdName = "search", doc = "search shard names/descriptions"])
 
