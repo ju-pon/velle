@@ -36,6 +36,10 @@ proc loadShard*(dir, source, relName: string): Shard =
   result.description = tomlStr(t, "description")
   result.params = tomlSeq(t, "params")
   result.requires = tomlSeq(t, "requires")
+  ## Accept `require` as a shorthand for the documented `requires` key.
+  ## This supports bundle shards that contain no [[file]] entries.
+  for r in tomlSeq(t, "require"):
+    if r notin result.requires: result.requires.add r
   for ft in tomlTables(t, "file"):
     var f = ShardFile(src: tomlStr(ft, "src"), dest: tomlStr(ft, "dest"),
                       comment: tomlStr(ft, "comment"), region: tomlStr(ft, "region"))
