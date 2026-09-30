@@ -43,7 +43,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: velle-${{ matrix.target }}
-          path: build/velle${{ runner.os == 'Windows' && '.exe' || '' }}
+          path: velle${{ runner.os == 'Windows' && '.exe' || '' }}
           retention-days: 30
 
   release:
