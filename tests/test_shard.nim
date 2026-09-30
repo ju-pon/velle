@@ -1,5 +1,5 @@
 import std/[unittest, os]
-import shard
+import ../src/shard
 
 suite "shard dependencies":
   test "resolve require-only shard with singular require key":

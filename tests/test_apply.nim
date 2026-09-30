@@ -1,9 +1,9 @@
 import std/[unittest, options]
-import apply, shard, util
+import ../src/[apply, shard, util]
 
-proc plan(mode: InsertMode, dest, rendered, existing: string, some_ = true): string =
+proc plan(mode: InsertMode, dest, rendered, existing: string, somee = true): string =
   let f = ShardFile(src: "x", dest: dest, mode: mode)
-  planFile(f, "t/lint", rendered, (if some_: some(existing) else: none(string)), false)
+  planFile(f, "t/lint", rendered, (if somee: some(existing) else: none(string)), false)
 
 suite "append":
   test "adds, then is idempotent":

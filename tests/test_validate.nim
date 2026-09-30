@@ -1,5 +1,5 @@
 import std/[unittest, os, strutils]
-import shard, validate
+import ../src/[shard, validate]
 
 proc makeShard(dir, params, body: string): Shard =
   createDir(dir / "files")

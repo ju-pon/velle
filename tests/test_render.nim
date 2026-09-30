@@ -1,5 +1,5 @@
 import std/[unittest, tables]
-import render, util
+import ../src/[render, util]
 
 suite "render":
   let p = {"author": "Ada", "year": "2026"}.toTable

@@ -1,1 +1,4 @@
 velle
+tests/test_apply
+tests/test_golden
+tests/test_shard
