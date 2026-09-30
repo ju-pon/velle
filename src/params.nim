@@ -74,7 +74,7 @@ proc peekParam*(name: string): string =
   if name in prof: return prof[name]
   detect(name)
 
-proc promptValue(name: string, allowEmpty = false): string =
+proc promptValue(name: string, allowEmpty = true): string =
   stdout.write "Enter " & name & ": "
   stdout.flushFile
   try: result = stdin.readLine().strip()
