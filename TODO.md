@@ -113,8 +113,6 @@ Recommended defaults, to be confirmed:
 | Regions in v1? | Yes. Already built; test coverage is the real cost. |
 | `requires` across remotes? | Yes, resolved through normal lookup order. Document that a local shadow changes the graph. |
 | `[[run]]` in v1? | Keep, behind confirmation as built. It is already gated; removing it later is a breaking change, adding it later is not. Revisit if governance of the official remote is unresolved. |
-| Official remote name/governance | Needs a decision before release. Suggest: a separate repo, PR review by maintainers, CI that runs `velle check` on every shard. |
-| Windows | After v1; CI job allowed to fail until then. |
 
 ## 5. Phase 2: Harden
 

@@ -63,6 +63,7 @@ proc detect*(name: string): string =
   of "email": gitConfig("user.email")
   of "year": $now().year
   of "name": detectProjectName()
+  of "project": detectProjectName()
   else: ""
 
 proc peekParam*(name: string): string =
