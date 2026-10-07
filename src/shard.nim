@@ -1,11 +1,12 @@
 ## shard.nim -- shard.toml parsing, lookup across sources, dependency resolution.
 import std/[os, strutils, sets]
 import parsetoml
-import util, remote
+import util, remote, params
 
 type
   InsertMode* = enum imCreate, imAppend, imRegion
-
+  
+  
   ShardFile* = object
     src*, dest*: string
     mode*: InsertMode
@@ -15,6 +16,7 @@ type
   Shard* = object
     name*, description*, root*, source*: string
     params*, fresh*, requires*: seq[string]
+    paramMeta*: seq[ParamInfo]  ## detailed parameter metadata
     files*: seq[ShardFile]
     runs*: seq[string]   ## [[run]] cmd = "..." (never executed without confirmation)
 
@@ -51,6 +53,25 @@ proc loadShard*(dir, source, relName: string): Shard =
   for rt in tomlTables(t, "run"):
     let c = tomlStr(rt, "cmd")
     if c.len > 0: result.runs.add c
+  
+  # Parse [param.name] sections for parameter metadata
+  if t.kind == TomlValueKind.Table and t.tableVal.hasKey("param"):
+    let paramTable = t.tableVal["param"]
+    if paramTable.kind == TomlValueKind.Table:
+      for paramName, paramValue in paramTable.tableVal:
+        if paramValue.kind == TomlValueKind.Table:
+          var meta = ParamInfo(name: paramName)
+          
+          # Parse scope
+          let scopeStr = tomlStr(paramValue, "scope", "project")
+          case scopeStr
+          of "profile": meta.scope = psProfile
+          of "project": meta.scope = psProject
+          else: fail("shard " & result.name & ": param " & paramName & " has invalid scope '" & scopeStr & "' (expected 'profile' or 'project')")
+          
+          meta.prompt = tomlStr(paramValue, "prompt")
+          meta.default = tomlStr(paramValue, "default")
+          result.paramMeta.add meta
 
 # ---- sources ----------------------------------------------------------------
 

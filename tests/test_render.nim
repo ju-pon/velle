@@ -49,3 +49,10 @@ suite "fresh parameters":
     # Random IDs should be different (very high probability)
     check randomId1 != randomId2
 
+suite "parameter metadata":
+  test "ParamInfo scope enum values":
+    let profileMeta = ParamInfo(name: "author", scope: psProfile)
+    let projectMeta = ParamInfo(name: "name", scope: psProject)
+    check profileMeta.scope == psProfile
+    check projectMeta.scope == psProject
+

@@ -59,6 +59,15 @@ params      = ["author", "project"]
 fresh       = ["timestamp", "random_id"]
 requires    = ["other/shard"]
 
+# Parameter metadata (optional)
+[param.author]
+scope   = "profile"        # profile | project
+prompt  = "Your full name"
+
+[param.project]
+scope   = "project"
+default = "{{name}}"       # template using other parameters
+
 [[file]]
 src     = "files/.gitignore"
 dest    = ".gitignore"
@@ -77,12 +86,20 @@ Templates use `{{parameter}}` syntax. Parameters are resolved in this order:
 1. CLI flags (`--param name=value`)
 2. Project parameters (`.velle/params.toml`)
 3. Profile parameters (`~/.config/velle/profile.toml`)
-4. Auto-detection (git config, project files)
-5. Interactive prompts
+4. Default values from shard metadata
+5. Auto-detection (git config, project files)
+6. Interactive prompts
+
+**Parameter metadata** allows shards to control parameter behavior:
+- `scope`: Where to save prompted values (`profile` or `project`)
+- `prompt`: Custom prompt text
+- `default`: Template for default value using other parameters
 
 **Fresh parameters** are computed each time and never cached:
 - Built-in: `timestamp`, `current_year`, `current_date`, `git_branch`, `git_commit`, `random_id`
 - Shard-defined: add names to `fresh = [...]` array
+
+**Legacy behavior**: Parameters `author`, `email`, `handle`, `license` default to profile scope for backward compatibility.
 
 ### File modes
 

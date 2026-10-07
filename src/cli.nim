@@ -94,13 +94,23 @@ proc doAdd(args, param: seq[string], o: Options) =
   for s in shards: echo "using ", s.name, "  [", s.source, "]"
   # 2. resolve params and fresh values (prompt if needed)
   var needed, freshNames: seq[string]
+  var paramMeta: seq[ParamInfo]
   for s in shards:
     for p in s.params:
       if p notin needed: needed.add p
     for f in s.fresh:
       if f notin needed: needed.add f
       if f notin freshNames: freshNames.add f
-  let ps = resolveParams(needed, freshNames, parseCliParams(param), o)
+    # Collect parameter metadata, avoiding duplicates
+    for meta in s.paramMeta:
+      var found = false
+      for existing in paramMeta:
+        if existing.name == meta.name:
+          found = true
+          break
+      if not found:
+        paramMeta.add meta
+  let ps = resolveParamsWithMeta(needed, freshNames, paramMeta, parseCliParams(param), o)
   # 3+4. render and plan without writing
   let changes = planShards(shards, ps, o)
   if changes.len == 0:

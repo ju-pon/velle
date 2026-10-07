@@ -3,12 +3,21 @@
 import std/[os, strutils, tables, times, algorithm, random]
 import std/json
 import parsetoml
-import util
+import util, render
 
-type Params* = Table[string, string]
+type 
+  Params* = Table[string, string]
+  
+  ParamScope* = enum psProfile, psProject
+  
+  ParamInfo* = object
+    name*: string
+    scope*: ParamScope
+    prompt*: string
+    default*: string
 
-## Params saved to the global profile when prompted; everything else goes to
-## the project params. TODO: let shards declare this (design doc section 4).
+## Legacy profile parameters for backward compatibility.
+## New shards should use [param.name] scope declarations instead.
 const identityParams* = ["author", "email", "handle", "license"]
 
 ## Built-in fresh values that are available by default.
@@ -98,17 +107,24 @@ proc peekParam*(name: string): string =
   if name in prof: return prof[name]
   detect(name)
 
-proc promptValue(name: string, allowEmpty = true): string =
-  stdout.write "Enter " & name & ": "
+proc promptValue(name: string, prompt = "", allowEmpty = true): string =
+  let promptText = if prompt.len > 0: prompt else: "Enter " & name
+  stdout.write promptText & ": "
   stdout.flushFile
   try: result = stdin.readLine().strip()
   except EOFError: result = ""
   if result.len == 0 and not allowEmpty:
     fail("no value for param '" & name & "' (pass --param " & name & "=...)")
 
-proc resolveParams*(needed: seq[string], freshNames: seq[string], cli: Params, o: Options): Params =
+proc resolveParamsWithMeta*(needed: seq[string], freshNames: seq[string], paramMeta: seq[ParamInfo], cli: Params, o: Options): Params =
   let proj = loadFlat(projectParamsPath())
   let prof = loadFlat(profilePath())
+  
+  # Build lookup table for parameter metadata
+  var metaMap: Table[string, ParamInfo]
+  for meta in paramMeta:
+    metaMap[meta.name] = meta
+  
   for n in needed:
     if n in result: continue
     var v = ""
@@ -120,20 +136,36 @@ proc resolveParams*(needed: seq[string], freshNames: seq[string], cli: Params, o
       result[n] = v
       continue
     
-    # Handle regular cached parameters
+    # Check if we have metadata for this parameter
+    let hasMeta = n in metaMap
+    let meta = if hasMeta: metaMap[n] else: ParamInfo(name: n, scope: psProject)
+    
+    # Handle regular cached parameters with metadata support
     if n in cli: v = cli[n]
     elif n in proj: v = proj[n]
     elif n in prof: v = prof[n]
-    else: v = detect(n)
+    else: 
+      # Try default value template if provided
+      if hasMeta and meta.default.len > 0:
+        v = render(meta.default, result, "param default")
+      else:
+        v = detect(n)
+    
     if v.len == 0:
-      v = promptValue(n)
+      let customPrompt = if hasMeta and meta.prompt.len > 0: meta.prompt else: ""
+      v = promptValue(n, customPrompt)
       if not o.dryRun:
-        let path = if n in identityParams: profilePath() else: projectParamsPath()
+        # Use shard-declared scope or fallback to legacy logic
+        let useProfile = if hasMeta: (meta.scope == psProfile) else: (n in identityParams)
+        let path = if useProfile: profilePath() else: projectParamsPath()
         var saved = loadFlat(path)
         saved[n] = v
         saveFlat(path, saved)
         o.vlog "saved " & n & " to " & path
     result[n] = v
+
+proc resolveParams*(needed: seq[string], freshNames: seq[string], cli: Params, o: Options): Params =
+  resolveParamsWithMeta(needed, freshNames, @[], cli, o)
 
 proc initProject*(o: Options) =
   ## Creates .velle/params.toml; prompts only for what can't be detected.
