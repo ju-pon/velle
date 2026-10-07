@@ -107,6 +107,12 @@ Templates use `{{parameter}}` syntax. Parameters are resolved in this order:
 - `append` - Add content to end of existing file
 - `region` - Maintain named section between markers
 
+**Region markers** are automatically chosen by file extension:
+- Line comments: `# >>> velle:name >>>` for shell, YAML, Python, etc.
+- C-style: `// >>> velle:name >>>` for JavaScript, Go, Rust, etc.  
+- Block comments: `<!-- >>> velle:name >>> -->` for Markdown, HTML, XML
+- Override with `comment = "custom"` in shard.toml
+
 ### Dependency bundles
 
 Bundle shards collect dependencies without files:

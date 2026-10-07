@@ -13,12 +13,13 @@ type
 # ---- comment syntax -----------------------------------------------------------
 
 proc commentFor*(dest, override: string): string =
-  ## Built-in table by file extension. TODO: block comments (<!-- --> for md/html).
+  ## Built-in table by file extension. Returns comment prefix, or "open|close" for block comments.
   if override.len > 0: return override
   let ext = splitFile(dest).ext.toLowerAscii
   case ext
   of ".hs", ".cabal", ".sql", ".lua": "--"
   of ".c", ".h", ".cpp", ".js", ".ts", ".go", ".rs", ".java", ".swift": "//"
+  of ".md", ".html", ".htm", ".xml": "<!--|-->"  # block comment syntax
   else: "#"   # also justfile, Makefile, .gitignore, yaml, toml, sh, ...
 
 # ---- per-mode planning (LF-normalised text in, LF text out) --------------------
@@ -31,8 +32,18 @@ proc appendBlock(lf, rendered: string): string =
   result.add body & "\n"
 
 proc regionPatch(lf, rendered, id, comment: string): string =
-  let beginM = comment & " >>> velle:" & id & " >>>"
-  let endM = comment & " <<< velle:" & id & " <<<"
+  let (beginM, endM) = 
+    if "|" in comment:
+      # Block comment syntax: "open|close"
+      let parts = comment.split("|", 1)
+      let open = parts[0]
+      let close = parts[1]
+      (open & " >>> velle:" & id & " >>> " & close,
+       open & " <<< velle:" & id & " <<< " & close)
+    else:
+      # Line comment syntax
+      (comment & " >>> velle:" & id & " >>>",
+       comment & " <<< velle:" & id & " <<<")
   let hadNl = lf.endsWith("\n")
   let core = if hadNl: lf[0 ..< lf.len - 1] else: lf
   var lines: seq[string] = if lf.len == 0: @[] else: core.split('\n')

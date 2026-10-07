@@ -35,3 +35,19 @@ suite "region":
     expect VelleError:
       discard plan(imRegion, "justfile", "x\n", m & m)
 
+suite "block comments":
+  test "commentFor detects block comment files":
+    check commentFor("file.md", "") == "<!--|-->"
+    check commentFor("file.html", "") == "<!--|-->"
+    check commentFor("file.xml", "") == "<!--|-->"
+    check commentFor("file.txt", "") == "#"  # fallback to line comment
+
+  test "markdown regions use block comments":
+    check plan(imRegion, "README.md", "Hello\n", "# Title\n") ==
+      "# Title\n<!-- >>> velle:t-lint >>> -->\nHello\n<!-- <<< velle:t-lint <<< -->\n"
+
+  test "HTML regions use block comments":
+    let old = "<p>content</p>\n<!-- >>> velle:t-lint >>> -->\nOLD\n<!-- <<< velle:t-lint <<< -->\n<footer></footer>\n"
+    check plan(imRegion, "index.html", "NEW\n", old) ==
+      "<p>content</p>\n<!-- >>> velle:t-lint >>> -->\nNEW\n<!-- <<< velle:t-lint <<< -->\n<footer></footer>\n"
+
