@@ -1,3 +1,5 @@
 description = "velle²"
 name = "velle"
+nix-version = ""
+packages = ""
 year = "2026"

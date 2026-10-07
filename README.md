@@ -12,48 +12,36 @@ Velle is a work in progress. The basic `add` workflow is usable, but the file
 rollback guarantees, parameter configuration, and some cross-platform behavior
 are still being developed.
 
-## Getting started
+## Installation
 
-There are binaries available as artefacts of CI builds.
-
-### Manual Install
-
-Install the dependencies and build Velle:
+Download precompiled binaries from CI build artifacts, or build from source:
 
 ```
 nimble install cligen parsetoml
 nimble build
 ```
 
-### Starting Coding
+## Quick start
 
-Create a project and add a local shard:
+Initialize a project and add a shard:
 
 ```
 mkdir my-project
 cd my-project
 git init
+velle init
 
 velle add path/to/shard --dry-run
+velle add path/to/shard
 ```
 
-The `--dry-run` option shows the changes without writing anything. When the
-preview looks right, run the command again without `--dry-run` and confirm the
-changes.
+Use `--dry-run` to preview changes. Use `velle add` without arguments for interactive shard selection (requires `fzf` or `rg`).
 
-If you do not know the shard name, leave it out:
+## Shards
 
-```
-velle add
-```
+A shard is a directory containing `shard.toml` and optionally a `files/` directory.
 
-Velle will open `fzf` if it is installed. Without `fzf`, it provides a simple
-search and selection prompt using `rg`.
-
-## How shards work
-
-A shard is a directory containing a `shard.toml` file and, for file-producing
-shards, a `files` directory. Here is a small example:
+### Basic shard structure
 
 ```
 my-shard/
@@ -62,40 +50,51 @@ my-shard/
     └── .gitignore
 ```
 
-The corresponding `shard.toml` might look like this:
+### shard.toml format
 
-```
+```toml
 name        = "gitignore/base"
 description = "Common files to ignore"
-params      = []
+params      = ["author", "project"]
+fresh       = ["timestamp", "random_id"]
+requires    = ["other/shard"]
 
 [[file]]
-src  = "files/.gitignore"
-dest = ".gitignore"
-mode = "create"
+src     = "files/.gitignore"
+dest    = ".gitignore"
+mode    = "create"
+comment = "#"      # override comment prefix for regions
+region  = "custom" # override region name
+
+[[run]]
+cmd = "chmod +x script.sh"
 ```
 
-Templates can refer to parameters with `{{name}}` syntax:
+### Parameters
 
-```
-name   = "license/header"
-params = ["author", "year"]
+Templates use `{{parameter}}` syntax. Parameters are resolved in this order:
 
-[[file]]
-src  = "files/header.txt"
-dest = "LICENSE"
-mode = "create"
-```
+1. CLI flags (`--param name=value`)
+2. Project parameters (`.velle/params.toml`)
+3. Profile parameters (`~/.config/velle/profile.toml`)
+4. Auto-detection (git config, project files)
+5. Interactive prompts
 
-A shard can create a file, append a block to an existing file, or maintain a
-named region. The available modes are `create`, `append`, and `region`.
+**Fresh parameters** are computed each time and never cached:
+- Built-in: `timestamp`, `current_year`, `current_date`, `git_branch`, `git_commit`, `random_id`
+- Shard-defined: add names to `fresh = [...]` array
+
+### File modes
+
+- `create` - Write new file (default)
+- `append` - Add content to end of existing file
+- `region` - Maintain named section between markers
 
 ### Dependency bundles
 
-A shard does not need to contain any files. It can simply collect other shards
-into a convenient bundle:
+Bundle shards collect dependencies without files:
 
-```
+```toml
 name        = "dev/gitignore-bundle-full"
 description = "A complete gitignore setup"
 params      = []
@@ -111,59 +110,43 @@ require     = [
 ]
 ```
 
-Both `require = [...]` and `requires = [...]` are accepted. Dependencies are
-resolved first and applied in dependency order.
+Both `require` and `requires` are accepted. Dependencies resolve recursively in topological order.
 
-## Checking shards
+## Validation
 
-Before using a shard, you can validate it with:
+Validate shards before use:
 
 ```
 velle check path/to/shard
+velle check .velle/shards  # check directory of shards
 ```
 
-If the path is a directory containing multiple shards, all nested `shard.toml`
-files are checked:
+Validation verifies:
+- Template parameters are declared in `params`
+- Declared parameters are used
+- Template markers are well-formed
+- Source files exist
 
-```
-velle check .velle/shards
-```
+`velle add` validates automatically before prompting for parameters.
 
-Validation checks that:
+## Commands
 
-- every `{{parameter}}` used by a template is declared in `params`;
-
-- declared parameters are not accidentally unused;
-
-- template markers are well formed; and
-
-- every template file listed by the shard exists.
-
-`velle add` performs the same validation for the selected shard and its
-dependencies before asking for parameter values or planning changes.
-
-## Useful commands
-
-| Command | Purpose |
+| Command | Description |
 | --- | --- |
-| `velle init` | Create project parameter storage. |
-| `velle add <shard>` | Apply a shard and its dependencies. |
-| `velle add` | Select a shard interactively. |
-| `velle check [path]` | Validate one shard or a directory of shards. |
-| `velle search <term>` | Search available shard names and descriptions. |
-| `velle new <name> [files...]` | Create a shard from existing files. |
-| `velle remote list` | List configured shard remotes. |
-| `velle remote refresh` | Refresh configured remotes. |
+| `velle init` | Initialize project parameter storage |
+| `velle add <shard>` | Apply shard and dependencies |
+| `velle add` | Interactive shard selection |
+| `velle check [path]` | Validate shard or directory |
+| `velle search <term>` | Search shard names and descriptions |
+| `velle new <name> [files...]` | Create shard from existing files |
+| `velle remote list` | List configured remotes |
+| `velle remote refresh` | Update remote repositories |
 
-Use `velle <command> --help` for command-specific options.
+Global options: `--dry-run`, `--yes`, `--verbose`
 
 ## Development
 
-To build the project:
-
-```
+```bash
 nimble build
+nimble test
 ```
-
-The test command and CI setup are still being completed as part of the WIP
-stabilization work.

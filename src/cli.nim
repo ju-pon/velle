@@ -92,12 +92,15 @@ proc doAdd(args, param: seq[string], o: Options) =
   printReport(validation)
   if validation.errors.len > 0: fail("shard validation failed")
   for s in shards: echo "using ", s.name, "  [", s.source, "]"
-  # 2. resolve params (prompt if needed)
-  var needed: seq[string]
+  # 2. resolve params and fresh values (prompt if needed)
+  var needed, freshNames: seq[string]
   for s in shards:
     for p in s.params:
       if p notin needed: needed.add p
-  let ps = resolveParams(needed, parseCliParams(param), o)
+    for f in s.fresh:
+      if f notin needed: needed.add f
+      if f notin freshNames: freshNames.add f
+  let ps = resolveParams(needed, freshNames, parseCliParams(param), o)
   # 3+4. render and plan without writing
   let changes = planShards(shards, ps, o)
   if changes.len == 0:

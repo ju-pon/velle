@@ -14,7 +14,7 @@ type
 
   Shard* = object
     name*, description*, root*, source*: string
-    params*, requires*: seq[string]
+    params*, fresh*, requires*: seq[string]
     files*: seq[ShardFile]
     runs*: seq[string]   ## [[run]] cmd = "..." (never executed without confirmation)
 
@@ -35,6 +35,7 @@ proc loadShard*(dir, source, relName: string): Shard =
   result.name = tomlStr(t, "name", relName)
   result.description = tomlStr(t, "description")
   result.params = tomlSeq(t, "params")
+  result.fresh = tomlSeq(t, "fresh")
   result.requires = tomlSeq(t, "requires")
   ## Accept `require` as a shorthand for the documented `requires` key.
   ## This supports bundle shards that contain no [[file]] entries.

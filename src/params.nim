@@ -1,6 +1,6 @@
 ## params.nim -- profile, project params, auto-detection, prompting.
 ## Resolution: CLI flags > project params > profile > auto-detect > prompt (then save).
-import std/[os, strutils, tables, times, algorithm]
+import std/[os, strutils, tables, times, algorithm, random]
 import std/json
 import parsetoml
 import util
@@ -10,6 +10,10 @@ type Params* = Table[string, string]
 ## Params saved to the global profile when prompted; everything else goes to
 ## the project params. TODO: let shards declare this (design doc section 4).
 const identityParams* = ["author", "email", "handle", "license"]
+
+## Built-in fresh values that are available by default.
+## Shards can declare their own fresh values in addition to these.
+const builtinFreshNames* = ["timestamp", "current_year", "current_date", "git_branch", "git_commit", "random_id"]
 
 proc profilePath*(): string = configDir() / "profile.toml"
 proc projectParamsPath*(): string = getCurrentDir() / ".velle" / "params.toml"
@@ -57,17 +61,37 @@ proc detectProjectName(): string =
         if n.len > 0: return n
   lastPathPart(cwd)
 
+proc detectFresh*(name: string): string =
+  ## Generate fresh values that are computed each time and never cached.
+  case name
+  of "timestamp": $getTime().toUnix()
+  of "current_year": $now().year
+  of "current_date": now().format("yyyy-MM-dd")
+  of "git_branch":
+    let branch = gitConfig("symbolic-ref --short HEAD")
+    if branch.len > 0: branch else: "main"
+  of "git_commit":
+    let commit = gitConfig("rev-parse HEAD")
+    if commit.len > 0: commit[0..6] else: "unknown"
+  of "random_id": $(rand(899999) + 100000)  # 6-digit random number
+  else: ""
+
 proc detect*(name: string): string =
+  ## Detect cacheable parameters.
+  if name in builtinFreshNames:
+    return detectFresh(name)
   case name
   of "author": gitConfig("user.name")
   of "email": gitConfig("user.email")
-  of "year": $now().year
+  of "year": $now().year  # Keep for backward compatibility, but consider using current_year
   of "name": detectProjectName()
   of "project": detectProjectName()
   else: ""
 
 proc peekParam*(name: string): string =
   ## Best known value without prompting (used by `velle new` heuristics).
+  if name in builtinFreshNames:
+    return detectFresh(name)
   let proj = loadFlat(projectParamsPath())
   if name in proj: return proj[name]
   let prof = loadFlat(profilePath())
@@ -82,12 +106,21 @@ proc promptValue(name: string, allowEmpty = true): string =
   if result.len == 0 and not allowEmpty:
     fail("no value for param '" & name & "' (pass --param " & name & "=...)")
 
-proc resolveParams*(needed: seq[string], cli: Params, o: Options): Params =
+proc resolveParams*(needed: seq[string], freshNames: seq[string], cli: Params, o: Options): Params =
   let proj = loadFlat(projectParamsPath())
   let prof = loadFlat(profilePath())
   for n in needed:
     if n in result: continue
     var v = ""
+    
+    # Handle fresh values - always compute fresh, never cache
+    if n in freshNames or n in builtinFreshNames:
+      if n in cli: v = cli[n]  # CLI override still works
+      else: v = detectFresh(n)
+      result[n] = v
+      continue
+    
+    # Handle regular cached parameters
     if n in cli: v = cli[n]
     elif n in proj: v = proj[n]
     elif n in prof: v = prof[n]
